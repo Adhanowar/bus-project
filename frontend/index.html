@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SwiftBus | Premium Travel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .page { display: none; animation: fadeIn 0.3s ease-out; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .hero-section {
+            background: linear-gradient(rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.85)),
+            url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=2069');
+            background-size: cover; background-position: center; border-radius: 40px;
+        }
+        .step-item.active { color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 8px; }
+        .seat { width: 40px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold;
+            transition: all 0.15s; user-select: none; }
+        .seat:hover { border-color: #4f46e5; background: #eef2ff; }
+        .seat.selected { background: #4f46e5 !important; color: white !important; border-color: #4338ca !important; }
+        .seat.booked { background: #f1f5f9 !important; color: #cbd5e1 !important; cursor: not-allowed !important; border-color: #e2e8f0 !important; }
+        .seat.smart-pick { background: #10b981 !important; color: white !important; border-color: #059669 !important; animation: pulse-green 1.5s infinite; }
+        @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.4)} 50%{box-shadow:0 0 0 6px rgba(16,185,129,0)} }
+        .sidebar-item.active { background: #f8fafc; border-left: 4px solid #4f46e5; font-weight: bold; color: #4f46e5; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f8fafc; }
+        .autocomplete-wrapper { position: relative; }
+        .autocomplete-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; background: white;
+            border: 1px solid #e2e8f0; border-radius: 12px; z-index: 999;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1); max-height: 200px; overflow-y: auto; display: none;
+        }
+        .autocomplete-dropdown.open { display: block; }
+        .autocomplete-option { padding: 10px 16px; cursor: pointer; font-weight: 600; font-size: 14px; color: #334155; display: flex; align-items: center; }
+        .autocomplete-option:hover { background: #eef2ff; color: #4f46e5; }
+        .autocomplete-option i { margin-right: 8px; color: #94a3b8; }
+        #toast { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s ease; pointer-events: none; }
+        #toast.show { transform: translateY(0); opacity: 1; }
+        .boarding-option { border: 2px solid #e2e8f0; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
+        .boarding-option:hover { border-color: #4f46e5; background: #eef2ff; }
+        .boarding-option.selected { border-color: #4f46e5; background: #eef2ff; }
+        .point-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #cbd5e1; flex-shrink: 0; }
+        .boarding-option.selected .point-radio { background: #4f46e5; border-color: #4f46e5; }
+        .pay-tab { border: 2px solid #e2e8f0; border-radius: 16px; cursor: pointer; transition: all 0.2s; padding: 12px 20px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 13px; }
+        .pay-tab:hover { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .pay-tab.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+        .pay-section { display: none; }
+        .pay-section.active { display: block; }
+        .filter-badge { background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+        .filter-badge button { color: #a5b4fc; font-weight: 900; margin-left: 2px; }
+        .filter-badge button:hover { color: #4f46e5; }
+        .delay-low    { background: #d1fae5; color: #065f46; }
+        .delay-medium { background: #fef3c7; color: #92400e; }
+        .delay-high   { background: #fee2e2; color: #991b1b; }
+        /* Women reviews panel */
+        .women-panel { display: none; background: #fdf2f8; border: 1.5px solid #fbcfe8; border-radius: 16px; padding: 14px; margin-top: 10px; }
+        .women-panel.open { display: block; }
+        .star-bar-bg { background: #fce7f3; border-radius: 999px; height: 6px; flex: 1; }
+        .star-bar-fill { background: #ec4899; border-radius: 999px; height: 6px; }
+        /* Ticket */
+        #ticketModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; }
+        #ticketModal.open { display: flex; }
+        .ticket-box { background: white; border-radius: 32px; padding: 0; overflow: hidden; width: 480px; max-width: 95vw; box-shadow: 0 40px 80px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+        .ticket-header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 28px 32px; }
+        .ticket-body { padding: 28px 32px; }
+        .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed #e2e8f0; }
+        .ticket-row:last-child { border-bottom: none; }
+        .ticket-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+        .ticket-value { font-size: 14px; font-weight: 800; color: #1e293b; text-align: right; max-width: 60%; }
+        .ticket-divider { border: none; border-top: 2px dashed #e2e8f0; margin: 16px 0; position: relative; }
+        .ticket-divider::before { content: '●'; position: absolute; left: -40px; top: -10px; color: #f1f5f9; font-size: 20px; }
+        .ticket-divider::after  { content: '●'; position: absolute; right: -40px; top: -10px; color: #f1f5f9; font-size: 20px; }
+        /* Smart seat modal */
+        #smartModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9998; align-items:center; justify-content:center; }
+        #smartModal.open { display:flex; }
+        .smart-option-btn { border: 2px solid #e2e8f0; border-radius: 20px; padding: 20px; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .smart-option-btn:hover { border-color: #4f46e5; background: #eef2ff; }
+        /* Back button */
+        .back-btn { display: inline-flex; align-items: center; gap: 8px; color: #64748b; font-weight: 700; font-size: 13px; cursor: pointer; padding: 8px 16px; border-radius: 12px; transition: all 0.2s; border: 1.5px solid #e2e8f0; background: white; }
+        .back-btn:hover { border-color: #4f46e5; color: #4f46e5; background: #eef2ff; }
+        @media print {
+            body > *:not(#ticketModal) { display: none !important; }
+            #ticketModal { position: static !important; background: none !important; display: block !important; }
+            .ticket-box { box-shadow: none !important; width: 100% !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <!-- Toast -->
+    <div id="toast" class="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 text-sm font-bold min-w-[260px]">
+        <i id="toastIcon" class="fas fa-check-circle text-emerald-400 text-lg"></i>
+        <span id="toastMsg">Message here</span>
+    </div>
+
+    <!-- Ticket Modal -->
+    <div id="ticketModal">
+        <div class="ticket-box">
+            <div class="ticket-header">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-white/20 p-2 rounded-xl"><i class="fas fa-bus text-white text-xl"></i></div>
+                    <div><p class="font-black text-xl tracking-tighter">SwiftBus</p><p class="text-indigo-200 text-xs font-bold">E-Ticket / Booking Confirmation</p></div>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div><p class="text-indigo-200 text-[10px] font-bold uppercase tracking-widest">Trip ID</p><p class="font-black text-2xl tracking-wider" id="tkt_tripId">--</p></div>
+                    <span class="bg-emerald-400 text-emerald-900 px-4 py-1.5 rounded-full text-xs font-black uppercase">Confirmed ✓</span>
+                </div>
+            </div>
+            <div class="ticket-body">
+                <div class="flex justify-between items-center mb-6">
+                    <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">From</p><p class="font-black text-2xl" id="tkt_from">--</p></div>
+                    <div class="text-center"><i class="fas fa-arrow-right text-indigo-400 text-xl"></i><p class="text-[9px] text-slate-300 font-bold mt-1" id="tkt_busType">--</p></div>
+                    <div class="text-right"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">To</p><p class="font-black text-2xl" id="tkt_to">--</p></div>
+                </div>
+                <hr class="ticket-divider">
+                <div class="ticket-row"><span class="ticket-label">Bus Name</span><span class="ticket-value" id="tkt_busName">--</span></div>
+                <div class="ticket-row"><span class="ticket-label">Travel Date</span><span class="ticket-value" id="tkt_date">--</span></div>
+                <div class="ticket-row"><span class="ticket-label">Departure</span><span class="ticket-value" id="tkt_departure">--</span></div>
+                <div class="ticket-row"><span class="ticket-label">Seats</span><span class="ticket-value" id="tkt_seats">--</span></div>
+                <div class="ticket-row"><span class="ticket-label">Boarding Point</span><span class="ticket-value" id="tkt_boarding">--</span></div>
+                <div class="ticket-row"><span class="ticket-label">Dropping Point</span><span class="ticket-value" id="tkt_dropping">--</span></div>
+                <div class="ticket-row"><span class="ticket-label">Passenger(s)</span><span class="ticket-value" id="tkt_passenger">--</span></div>
+                <div id="tkt_extra_passengers"></div>
+                <hr class="ticket-divider">
+                <div class="flex justify-between items-center mt-2">
+                    <span class="font-black text-slate-500">Total Paid</span>
+                    <span class="font-black text-2xl text-indigo-600" id="tkt_total">--</span>
+                </div>
+                <div class="flex gap-3 mt-6 no-print">
+                    <button onclick="window.print()" class="flex-1 bg-indigo-600 text-white py-3.5 rounded-2xl font-black hover:bg-indigo-700 transition text-sm"><i class="fas fa-download mr-2"></i> Download / Print</button>
+                    <button onclick="closeTicket()" class="flex-1 bg-slate-100 text-slate-700 py-3.5 rounded-2xl font-black hover:bg-slate-200 transition text-sm">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Seat Modal -->
+    <div id="smartModal">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl p-10 w-[520px] max-w-[95vw]">
+            <h3 class="font-black text-xl mb-2 tracking-tighter">How would you like to choose your seat?</h3>
+            <p class="text-slate-400 text-sm mb-8">Smart selection uses AI to recommend the best seats based on your preferences.</p>
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <div class="smart-option-btn" onclick="chooseManual()">
+                    <i class="fas fa-hand-pointer text-3xl text-indigo-400 mb-3 block"></i>
+                    <p class="font-black text-sm">Choose Myself</p>
+                    <p class="text-xs text-slate-400 font-bold mt-1">Pick seats manually from the map</p>
+                </div>
+                <div class="smart-option-btn" onclick="showSmartPrefs()">
+                    <i class="fas fa-magic text-3xl text-emerald-400 mb-3 block"></i>
+                    <p class="font-black text-sm">Smart Selection</p>
+                    <p class="text-xs text-slate-400 font-bold mt-1">AI picks the best seats for you</p>
+                </div>
+            </div>
+            <div id="smartPrefsForm" class="hidden space-y-4 border-t pt-6">
+                <p class="font-black text-sm text-slate-700 mb-4">Tell us your preferences:</p>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gender Preference</label>
+                    <select id="pref_gender" class="w-full p-3 rounded-xl border border-slate-200 outline-none font-bold mt-1 text-sm focus:border-indigo-400">
+                        <option value="no_preference">No Preference</option>
+                        <option value="female_only">Female Passengers Nearby</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Travel Type</label>
+                    <select id="pref_travel" class="w-full p-3 rounded-xl border border-slate-200 outline-none font-bold mt-1 text-sm focus:border-indigo-400">
+                        <option value="no_preference">No Preference</option>
+                        <option value="quiet">Quiet / Reading</option>
+                        <option value="work">Work / Laptop</option>
+                        <option value="sleep">Sleep / Rest</option>
+                        <option value="social">Social / Chat</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seat Type</label>
+                    <select id="pref_seat" class="w-full p-3 rounded-xl border border-slate-200 outline-none font-bold mt-1 text-sm focus:border-indigo-400">
+                        <option value="no_preference">No Preference</option>
+                        <option value="window">Window</option>
+                        <option value="aisle">Aisle</option>
+                    </select>
+                </div>
+                <button onclick="fetchSmartSeats()" id="smartFetchBtn" class="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-black hover:bg-emerald-700 transition text-sm">
+                    <i class="fas fa-magic mr-2"></i> Get My Best Seats
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bg-white px-10 py-4 flex justify-between items-center shadow-sm sticky top-0 z-[100]">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="showPage('homePage')">
+            <div class="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-200"><i class="fas fa-bus text-white text-xl"></i></div>
+            <span class="text-2xl font-black text-indigo-900 tracking-tighter">SwiftBus</span>
+        </div>
+        <div id="userNav">
+            <button onclick="showPage('loginPage')" class="bg-indigo-600 text-white px-8 py-2.5 rounded-full font-bold shadow-xl shadow-indigo-100 transition hover:bg-indigo-700">Login / Signup</button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-8 px-6">
+
+        <!-- HOME PAGE -->
+        <div id="homePage" class="page active">
+            <div class="hero-section p-16 text-white mb-10 shadow-2xl">
+                <h1 class="text-5xl font-black mb-2 tracking-tighter">Explore Your World</h1>
+                <p class="text-slate-300 mb-8 font-medium">Book intercity bus tickets in seconds</p>
+                <div class="bg-white p-3 rounded-2xl flex flex-wrap lg:flex-nowrap gap-2 items-center shadow-2xl">
+                    <div class="flex-1 min-w-[200px] border-r border-slate-100 px-4 autocomplete-wrapper">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">From</label>
+                        <input id="src" type="text" autocomplete="off" class="w-full bg-transparent p-2 font-bold text-slate-800 outline-none" placeholder="Departure City"
+                            oninput="filterCities('src','srcDropdown')" onfocus="filterCities('src','srcDropdown')" onblur="setTimeout(()=>closeDropdown('srcDropdown'),150)">
+                        <div id="srcDropdown" class="autocomplete-dropdown"></div>
+                    </div>
+                    <button onclick="swapCities()" class="text-slate-400 hover:text-indigo-600 px-2 transition text-lg" title="Swap cities"><i class="fas fa-exchange-alt"></i></button>
+                    <div class="flex-1 min-w-[200px] border-r border-slate-100 px-4 autocomplete-wrapper">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Destination</label>
+                        <input id="dest" type="text" autocomplete="off" class="w-full bg-transparent p-2 font-bold text-slate-800 outline-none" placeholder="Arrival City"
+                            oninput="filterCities('dest','destDropdown')" onfocus="filterCities('dest','destDropdown')" onblur="setTimeout(()=>closeDropdown('destDropdown'),150)">
+                        <div id="destDropdown" class="autocomplete-dropdown"></div>
+                    </div>
+                    <div class="flex-1 min-w-[200px] px-4">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Date</label>
+                        <input id="travelDate" type="date" class="w-full bg-transparent p-2 font-bold text-slate-800 outline-none cursor-pointer">
+                    </div>
+                    <button onclick="searchBuses()" id="searchBtn" class="bg-indigo-600 text-white h-16 px-12 rounded-xl font-black hover:bg-indigo-700 transition uppercase tracking-tighter flex items-center gap-2">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
+
+            <div id="busResultsArea" class="hidden">
+                <div class="grid grid-cols-4 gap-8">
+                    <!-- FILTERS -->
+                    <div class="col-span-1 bg-white p-6 rounded-[2rem] border shadow-sm h-fit sticky top-28">
+                        <h3 class="font-black border-b pb-4 mb-4 text-sm tracking-widest text-slate-400">FILTERS</h3>
+                        <div class="mb-4">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Price Range</p>
+                            <div class="flex gap-2 items-center">
+                                <input type="number" id="minPrice" placeholder="Min" onchange="applyFilters()" class="w-full p-2 rounded-xl border text-sm font-bold outline-none focus:border-indigo-400">
+                                <span class="text-slate-300 font-bold">–</span>
+                                <input type="number" id="maxPrice" placeholder="Max" onchange="applyFilters()" class="w-full p-2 rounded-xl border text-sm font-bold outline-none focus:border-indigo-400">
+                            </div>
+                        </div>
+                        <div class="mb-4 pb-4 border-b">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Sort By</p>
+                            <select id="sortBy" onchange="applyFilters()" class="w-full text-sm font-bold p-2 rounded-xl border outline-none">
+                                <option value="">Default</option>
+                                <option value="price_asc">Price: Low to High</option>
+                                <option value="price_desc">Price: High to Low</option>
+                            </select>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-3 p-3 border rounded-2xl cursor-pointer hover:bg-indigo-50 transition">
+                                <input type="checkbox" id="acFilter" onchange="applyFilters()" class="w-5 h-5 accent-indigo-600">
+                                <span class="text-sm font-bold">AC Only</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 border rounded-2xl cursor-pointer hover:bg-pink-50 transition">
+                                <input type="checkbox" id="wSafe" onchange="applyFilters()" class="w-5 h-5 accent-pink-600">
+                                <span class="text-sm font-bold">Preferred by Women</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-3 border rounded-2xl cursor-pointer hover:bg-purple-50 transition">
+                                <input type="checkbox" id="specialFilter" onchange="applyFilters()" class="w-5 h-5 accent-purple-600">
+                                <div>
+                                    <span class="text-sm font-bold block">Preferred by Special Users</span>
+                                    <span class="text-[10px] text-slate-400 font-bold">Wheelchair-friendly & accessible</span>
+                                </div>
+                            </label>
+                        </div>
+                        <!-- Predictive Delay Filter -->
+                        <div class="mt-4 pt-4 border-t">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Predictive Delay Filter</p>
+                            <p class="text-[10px] text-slate-300 font-bold mb-3">Set conditions to predict delays on results</p>
+                            <div class="space-y-2 mb-3">
+                                <div>
+                                    <label class="text-[10px] text-slate-400 font-bold">Traffic Level</label>
+                                    <select id="trafficFilter" onchange="rerunDelays()" class="w-full text-sm font-bold p-2 rounded-xl border outline-none mt-1 focus:border-indigo-400">
+                                        <option value="medium">Medium (Default)</option>
+                                        <option value="low">Low Traffic</option>
+                                        <option value="high">High Traffic</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-400 font-bold">Weather</label>
+                                    <select id="weatherFilter" onchange="rerunDelays()" class="w-full text-sm font-bold p-2 rounded-xl border outline-none mt-1 focus:border-indigo-400">
+                                        <option value="clear">Clear (Default)</option>
+                                        <option value="rain">Rain</option>
+                                        <option value="heavy rain">Heavy Rain</option>
+                                    </select>
+                                </div>
+                                <label class="flex items-center gap-3 p-3 border rounded-2xl cursor-pointer hover:bg-amber-50 transition mt-1">
+                                    <input type="checkbox" id="lowDelayOnly" onchange="applyFilters()" class="w-5 h-5 accent-amber-500">
+                                    <span class="text-sm font-bold">Low Delay Risk Only</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button onclick="clearAllFilters()" class="w-full mt-4 text-xs font-bold text-slate-400 hover:text-rose-500 transition py-2">
+                            <i class="fas fa-times mr-1"></i> Clear All Filters
+                        </button>
+                    </div>
+                    <!-- BUS LIST -->
+                    <div class="col-span-3">
+                        <div id="activeBadges" class="flex flex-wrap gap-2 mb-4 min-h-[28px]"></div>
+                        <div id="busList" class="space-y-6"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOGIN PAGE -->
+        <div id="loginPage" class="page">
+            <div class="max-w-md mx-auto bg-white p-12 rounded-[3rem] shadow-2xl border">
+                <div class="text-center mb-8">
+                    <div class="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-200 inline-flex mb-4"><i class="fas fa-bus text-white text-2xl"></i></div>
+                    <h2 class="text-2xl font-black tracking-tighter text-slate-800">Welcome to SwiftBus</h2>
+                    <p class="text-slate-400 text-sm mt-1">Sign in or create an account to continue</p>
+                </div>
+                <div class="flex mb-8 bg-slate-100 p-1.5 rounded-2xl">
+                    <button onclick="toggleAuth('login')" id="lTab" class="flex-1 py-3.5 rounded-xl font-black transition bg-white text-indigo-600 shadow-xl text-sm">Login</button>
+                    <button onclick="toggleAuth('signup')" id="sTab" class="flex-1 py-3.5 rounded-xl font-black transition text-slate-500 text-sm">Signup</button>
+                </div>
+                <div id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</label>
+                        <input id="login_email" type="email" placeholder="you@example.com" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                        <div class="relative mt-1">
+                            <input id="login_pass" type="password" placeholder="••••••••" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold focus:border-indigo-400 transition pr-12">
+                            <button type="button" onclick="togglePass('login_pass',this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"><i class="fas fa-eye text-sm"></i></button>
+                        </div>
+                    </div>
+                    <button onclick="handleLogin()" id="loginBtn" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-indigo-700 transition mt-2">Sign In</button>
+                    <p class="text-center text-sm text-slate-400">Don't have an account? <button onclick="toggleAuth('signup')" class="text-indigo-600 font-bold">Sign up</button></p>
+                </div>
+                <div id="signupForm" class="hidden space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
+                        <input id="regName" type="text" placeholder="John Doe" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</label>
+                        <input id="regEmail" type="email" placeholder="you@example.com" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                        <div class="relative mt-1">
+                            <input id="regPass" type="password" placeholder="Min. 8 characters" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold focus:border-indigo-400 transition pr-12">
+                            <button type="button" onclick="togglePass('regPass',this)" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"><i class="fas fa-eye text-sm"></i></button>
+                        </div>
+                    </div>
+                    <button onclick="handleRegister()" id="registerBtn" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition mt-2">Create Account</button>
+                    <p class="text-center text-sm text-slate-400">Already have an account? <button onclick="toggleAuth('login')" class="text-indigo-600 font-bold">Sign in</button></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHECKOUT PAGE -->
+        <div id="checkoutPage" class="page">
+            <div class="flex justify-center gap-12 mb-10 border-b pb-6">
+                <span id="s1" class="step-item active font-black uppercase text-xs tracking-widest cursor-pointer">1. Select Seats</span>
+                <span id="s2" class="step-item font-black uppercase text-xs tracking-widest text-slate-400">2. Board/Drop Point</span>
+                <span id="s3" class="step-item font-black uppercase text-xs tracking-widest text-slate-400">3. Summary & Pay</span>
+            </div>
+            <div id="checkoutContent" class="max-w-5xl mx-auto"></div>
+        </div>
+
+        <!-- PROFILE PAGE -->
+        <div id="profilePage" class="page">
+            <div class="flex gap-8">
+                <div class="w-1/4 bg-white rounded-[2.5rem] shadow-sm border overflow-hidden h-fit">
+                    <div class="p-8 border-b text-center">
+                        <div class="w-20 h-20 rounded-full bg-indigo-600 text-white mx-auto flex items-center justify-center text-3xl font-black mb-4" id="userInitial">?</div>
+                        <span class="font-black text-xl text-slate-800" id="sideUserName">User Name</span>
+                    </div>
+                    <div class="sidebar-item active p-5 cursor-pointer" onclick="switchTab('profile')"><i class="far fa-user mr-4"></i> My Profile</div>
+                    <div class="sidebar-item p-5 cursor-pointer" onclick="switchTab('trips')"><i class="fas fa-ticket-alt mr-4"></i> My Trips</div>
+                </div>
+                <div class="w-3/4 bg-white rounded-[2.5rem] shadow-sm border p-12 min-h-[500px]">
+                    <!-- Profile View -->
+                    <div id="profileTab">
+                        <div class="flex justify-between items-start mb-10">
+                            <h2 class="text-3xl font-black tracking-tighter">My Profile</h2>
+                            <button onclick="showEditProfile()" class="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-5 py-2.5 rounded-2xl font-black text-sm hover:bg-indigo-100 transition">
+                                <i class="fas fa-pen text-xs"></i> Edit Profile
+                            </button>
+                        </div>
+                        <div id="profileView">
+                            <div class="grid grid-cols-2 gap-12 border-b-2 border-dashed pb-10">
+                                <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Full Name</p><p class="font-black text-lg" id="pName">--</p></div>
+                                <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Date of Birth</p><p class="font-black text-lg" id="pDob">--</p></div>
+                            </div>
+                            <div class="mt-10 grid grid-cols-2 gap-12">
+                                <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Email ID</p><p class="font-black text-lg" id="pEmail">--</p></div>
+                                <div><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Phone</p><p class="font-black text-lg" id="pPhone">--</p></div>
+                            </div>
+                        </div>
+                        <!-- Edit Profile Form (hidden by default) -->
+                        <div id="editProfileForm" class="hidden">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
+                                    <input id="edit_name" type="text" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone Number</label>
+                                    <input id="edit_phone" type="tel" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date of Birth</label>
+                                    <input id="edit_dob" type="date" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gender</label>
+                                    <select id="edit_gender" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                                        <option value="">Select gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                        <option value="Prefer not to say">Prefer not to say</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 mt-8">
+                                <button onclick="saveProfile()" id="saveProfileBtn" class="bg-indigo-600 text-white px-10 py-3.5 rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl">Save Changes</button>
+                                <button onclick="cancelEditProfile()" class="bg-slate-100 text-slate-600 px-10 py-3.5 rounded-2xl font-black hover:bg-slate-200 transition">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tripsTab" class="hidden">
+                        <h2 class="text-3xl font-black mb-10 tracking-tighter">Travel History</h2>
+                        <div id="historyList" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const API = 'http://127.0.0.1:5000';
+        let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+        let allBuses = [], selectedBus = null, selectedSeats = [];
+        let selectedBoarding = null, selectedDropping = null;
+        let lastBooking = null;
+        let delayCache = {};
+        let extraPassengers = []; // Task 3
+
+        const CITIES = ['Mumbai','Pune','Bangalore','Chennai','Hyderabad','Delhi','Ahmedabad','Surat','Kolkata','Jaipur'];
+
+        document.getElementById('travelDate').valueAsDate = new Date();
+        if (currentUser) updateNavbar();
+
+        // ── Toast ──────────────────────────────────────────────────────────────
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            document.getElementById('toastIcon').className = type === 'error'
+                ? 'fas fa-exclamation-circle text-red-400 text-lg'
+                : 'fas fa-check-circle text-emerald-400 text-lg';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ── Navbar ─────────────────────────────────────────────────────────────
+        function updateNavbar() {
+            document.getElementById('userNav').innerHTML = `
+                <div class="flex items-center gap-4 bg-white px-4 py-2 rounded-full border shadow-sm">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('profilePage')">
+                        <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">${currentUser.name[0].toUpperCase()}</div>
+                        <span class="font-bold text-sm text-slate-700">Hi, ${currentUser.name.split(' ')[0]}</span>
+                    </div>
+                    <button onclick="logout()" class="ml-2 text-rose-500 hover:text-rose-700 transition" title="Logout"><i class="fas fa-power-off"></i></button>
+                </div>`;
+        }
+
+        function logout() { if (confirm('Are you sure you want to logout?')) { localStorage.clear(); location.reload(); } }
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if (id === 'profilePage') { if (!currentUser) { showPage('loginPage'); return; } renderProfile(); }
+        }
+
+        // ── Auth ───────────────────────────────────────────────────────────────
+        function toggleAuth(type) {
+            const lTab = document.getElementById('lTab'), sTab = document.getElementById('sTab');
+            const lForm = document.getElementById('loginForm'), sForm = document.getElementById('signupForm');
+            if (type === 'signup') {
+                lForm.classList.add('hidden'); sForm.classList.remove('hidden');
+                sTab.className = "flex-1 py-3.5 rounded-xl font-black transition bg-white text-indigo-600 shadow-xl text-sm";
+                lTab.className = "flex-1 py-3.5 rounded-xl font-black transition text-slate-500 text-sm";
+            } else {
+                sForm.classList.add('hidden'); lForm.classList.remove('hidden');
+                lTab.className = "flex-1 py-3.5 rounded-xl font-black transition bg-white text-indigo-600 shadow-xl text-sm";
+                sTab.className = "flex-1 py-3.5 rounded-xl font-black transition text-slate-500 text-sm";
+            }
+        }
+
+        function togglePass(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const isPass = input.type === 'password';
+            input.type = isPass ? 'text' : 'password';
+            btn.innerHTML = `<i class="fas fa-${isPass ? 'eye-slash' : 'eye'} text-sm"></i>`;
+        }
+
+        function setLoading(btnId, loading, text = '') {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.disabled = loading;
+            if (loading) { btn.dataset.orig = btn.innerHTML; btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${text}`; }
+            else { btn.innerHTML = btn.dataset.orig || text; }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('login_email').value.trim();
+            const pass  = document.getElementById('login_pass').value;
+            if (!email || !pass) { showToast('Please fill in all fields', 'error'); return; }
+            if (!/\S+@\S+\.\S+/.test(email)) { showToast('Enter a valid email address', 'error'); return; }
+            setLoading('loginBtn', true, 'Signing in...');
+            try {
+                const res = await fetch(`${API}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pass }) });
+                const data = await res.json();
+                if (res.ok) { localStorage.setItem('user', JSON.stringify(data)); showToast('Welcome back, ' + data.name.split(' ')[0] + '!'); setTimeout(() => location.reload(), 1000); }
+                else { showToast(data.message || 'Login failed', 'error'); }
+            } catch (e) { showToast('Cannot connect to server. Is the backend running?', 'error'); }
+            finally { setLoading('loginBtn', false, 'Sign In'); }
+        }
+
+        async function handleRegister() {
+            const name  = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const pass  = document.getElementById('regPass').value;
+            if (!name || !email || !pass) { showToast('Please fill in all fields', 'error'); return; }
+            if (!/\S+@\S+\.\S+/.test(email)) { showToast('Enter a valid email address', 'error'); return; }
+            if (pass.length < 8) { showToast('Password must be at least 8 characters', 'error'); return; }
+            setLoading('registerBtn', true, 'Creating account...');
+            try {
+                const res = await fetch(`${API}/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password: pass }) });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Account created! Please sign in.');
+                    document.getElementById('regName').value = ''; document.getElementById('regEmail').value = ''; document.getElementById('regPass').value = '';
+                    setTimeout(() => toggleAuth('login'), 1000);
+                } else { showToast(data.message || 'Registration failed', 'error'); }
+            } catch (e) { showToast('Cannot connect to server. Is the backend running?', 'error'); }
+            finally { setLoading('registerBtn', false, 'Create Account'); }
+        }
+
+        // ── TASK 4: Edit Profile ───────────────────────────────────────────────
+        function showEditProfile() {
+            document.getElementById('profileView').classList.add('hidden');
+            document.getElementById('editProfileForm').classList.remove('hidden');
+            document.getElementById('edit_name').value   = currentUser.name  || '';
+            document.getElementById('edit_phone').value  = currentUser.phone || '';
+            document.getElementById('edit_dob').value    = currentUser.dob   || '';
+            document.getElementById('edit_gender').value = currentUser.gender|| '';
+        }
+
+        function cancelEditProfile() {
+            document.getElementById('editProfileForm').classList.add('hidden');
+            document.getElementById('profileView').classList.remove('hidden');
+        }
+
+        async function saveProfile() {
+            const name   = document.getElementById('edit_name').value.trim();
+            const phone  = document.getElementById('edit_phone').value.trim();
+            const dob    = document.getElementById('edit_dob').value;
+            const gender = document.getElementById('edit_gender').value;
+            if (!name) { showToast('Name cannot be empty', 'error'); return; }
+            setLoading('saveProfileBtn', true, 'Saving...');
+            try {
+                const res = await fetch(`${API}/update-profile`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id, name, phone, dob, gender })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    currentUser = { ...currentUser, ...data };
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    updateNavbar();
+                    cancelEditProfile();
+                    renderProfile();
+                    showToast('Profile updated successfully!');
+                } else { showToast(data.message || 'Update failed', 'error'); }
+            } catch (e) { showToast('Cannot connect to server', 'error'); }
+            finally { setLoading('saveProfileBtn', false, 'Save Changes'); }
+        }
+
+        // ── Autocomplete ───────────────────────────────────────────────────────
+        function filterCities(inputId, dropdownId) {
+            const val = document.getElementById(inputId).value.toLowerCase();
+            const dropdown = document.getElementById(dropdownId);
+            const filtered = CITIES.filter(c => c.toLowerCase().includes(val));
+            if (filtered.length === 0) { dropdown.classList.remove('open'); return; }
+            dropdown.innerHTML = filtered.map(c => `<div class="autocomplete-option" onmousedown="selectCity('${inputId}','${dropdownId}','${c}')"><i class="fas fa-map-marker-alt"></i>${c}</div>`).join('');
+            dropdown.classList.add('open');
+        }
+        function selectCity(inputId, dropdownId, city) { document.getElementById(inputId).value = city; closeDropdown(dropdownId); }
+        function closeDropdown(id) { document.getElementById(id).classList.remove('open'); }
+        function swapCities() { const s = document.getElementById('src'), d = document.getElementById('dest'); [s.value, d.value] = [d.value, s.value]; }
+
+        // ── Search ─────────────────────────────────────────────────────────────
+        async function searchBuses() {
+            const src  = document.getElementById('src').value.trim();
+            const dest = document.getElementById('dest').value.trim();
+            const date = document.getElementById('travelDate').value;
+            if (!src)  { showToast('Please enter departure city', 'error'); return; }
+            if (!dest) { showToast('Please enter destination city', 'error'); return; }
+            if (src.toLowerCase() === dest.toLowerCase()) { showToast('Source and destination cannot be same', 'error'); return; }
+            if (!date) { showToast('Please select a travel date', 'error'); return; }
+            setLoading('searchBtn', true, 'Searching...');
+            try {
+                const res = await fetch(`${API}/search`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: src, destination: dest, travelDate: date }) });
+                allBuses = await res.json();
+                delayCache = {};
+                document.getElementById('busResultsArea').classList.remove('hidden');
+                document.getElementById('busResultsArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await prefetchDelays();
+                applyFilters();
+                if (allBuses.length === 0) showToast('No buses found for this route', 'error');
+                else showToast(`${allBuses.length} bus${allBuses.length > 1 ? 'es' : ''} found!`);
+            } catch (e) { showToast('Search failed. Is the backend running?', 'error'); }
+            finally { setLoading('searchBtn', false, '<i class="fas fa-search"></i> Search'); }
+        }
+
+        // ── TASK 1: Delay prefetch ─────────────────────────────────────────────
+        async function prefetchDelays() {
+            const traffic = document.getElementById('trafficFilter')?.value || 'medium';
+            const weather = document.getElementById('weatherFilter')?.value || 'clear';
+            for (const b of allBuses) {
+                try {
+                    const res = await fetch(`${API}/predict-delay`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ busName: b.name, traffic, weather })
+                    });
+                    if (res.ok) delayCache[b.name] = await res.json();
+                } catch (e) { /* silent */ }
+            }
+        }
+
+        async function rerunDelays() {
+            await prefetchDelays();
+            applyFilters();
+        }
+
+        // ── Filters ────────────────────────────────────────────────────────────
+        function applyFilters() {
+            let filtered = [...allBuses];
+            const minP   = parseFloat(document.getElementById('minPrice')?.value) || 0;
+            const maxP   = parseFloat(document.getElementById('maxPrice')?.value) || Infinity;
+            const acOn   = document.getElementById('acFilter')?.checked;
+            const wOn    = document.getElementById('wSafe')?.checked;
+            const spOn   = document.getElementById('specialFilter')?.checked;
+            const ldOnly = document.getElementById('lowDelayOnly')?.checked;
+            const sort   = document.getElementById('sortBy')?.value;
+            if (minP > 0 || maxP < Infinity) filtered = filtered.filter(b => b.baseFare >= minP && b.baseFare <= maxP);
+            if (acOn)   filtered = filtered.filter(b => b.type && b.type.toLowerCase().includes('ac'));
+            if (wOn)    filtered = filtered.filter(b => b.womenSafe);
+            if (spOn)   filtered = filtered.filter(b => b.specialFriendly);
+            if (ldOnly) filtered = filtered.filter(b => { const d = delayCache[b.name]; return d ? d.risk_level === 'Low' : true; });
+            if (sort === 'price_asc')  filtered.sort((a, b) => a.baseFare - b.baseFare);
+            if (sort === 'price_desc') filtered.sort((a, b) => b.baseFare - a.baseFare);
+            renderBuses(filtered, wOn);
+            renderActiveBadges({ minP, maxP, acOn, wOn, spOn, ldOnly, sort });
+        }
+
+        function renderActiveBadges({ minP, maxP, acOn, wOn, spOn, ldOnly, sort }) {
+            const badges = [];
+            if (minP > 0 || maxP < Infinity) {
+                const label = minP > 0 && maxP < Infinity ? `₹${minP}–₹${maxP}` : minP > 0 ? `Min ₹${minP}` : `Max ₹${maxP}`;
+                badges.push(`<span class="filter-badge">💰 ${label}<button onclick="document.getElementById('minPrice').value='';document.getElementById('maxPrice').value='';applyFilters()">✕</button></span>`);
+            }
+            if (sort === 'price_asc')  badges.push(`<span class="filter-badge">↑ Price Low–High<button onclick="document.getElementById('sortBy').value='';applyFilters()">✕</button></span>`);
+            if (sort === 'price_desc') badges.push(`<span class="filter-badge">↓ Price High–Low<button onclick="document.getElementById('sortBy').value='';applyFilters()">✕</button></span>`);
+            if (acOn)   badges.push(`<span class="filter-badge">❄️ AC Only<button onclick="document.getElementById('acFilter').checked=false;applyFilters()">✕</button></span>`);
+            if (wOn)    badges.push(`<span class="filter-badge">♀ Women Preferred<button onclick="document.getElementById('wSafe').checked=false;applyFilters()">✕</button></span>`);
+            if (spOn)   badges.push(`<span class="filter-badge">♿ Special Users<button onclick="document.getElementById('specialFilter').checked=false;applyFilters()">✕</button></span>`);
+            if (ldOnly) badges.push(`<span class="filter-badge">🟢 Low Delay Only<button onclick="document.getElementById('lowDelayOnly').checked=false;applyFilters()">✕</button></span>`);
+            document.getElementById('activeBadges').innerHTML = badges.join('');
+        }
+
+        function clearAllFilters() {
+            ['minPrice','maxPrice'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+            ['acFilter','wSafe','specialFilter','lowDelayOnly'].forEach(id => { const el = document.getElementById(id); if(el) el.checked=false; });
+            ['sortBy'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+            document.getElementById('trafficFilter').value = 'medium';
+            document.getElementById('weatherFilter').value = 'clear';
+            applyFilters();
+        }
+
+        // ── TASK 2: Render buses with Women Reviews panel ─────────────────────
+        function renderBuses(buses, showWomenReviews = false) {
+            document.getElementById('busList').innerHTML = buses.map(b => {
+                const delay = delayCache[b.name];
+                const delayBadge = delay ? (() => {
+                    const cls  = delay.risk_level === 'Low' ? 'delay-low' : delay.risk_level === 'Medium' ? 'delay-medium' : 'delay-high';
+                    const icon = delay.risk_level === 'Low' ? '🟢' : delay.risk_level === 'Medium' ? '🟡' : '🔴';
+                    return `<span class="text-[10px] font-black px-2 py-1 rounded-full ${cls}">${icon} ${delay.risk_level} Delay · ~${delay.expected_delay}</span>`;
+                })() : '';
+                const specialBadge = b.specialFriendly ? `<span class="bg-purple-50 text-purple-600 text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest">♿ Accessible</span>` : '';
+                const womenBadge   = b.womenSafe       ? `<span class="bg-pink-50 text-pink-600 text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest">♀ Women Safe</span>` : '';
+
+                // Women reviews panel — only shown when "Preferred by Women" filter is ON
+                let womenPanel = '';
+                if (showWomenReviews && b.womenSafe && b.women_reviews) {
+                    const wr = b.women_reviews;
+                    const renderBar = (val) => {
+                        const pct = Math.round((val / 5) * 100);
+                        return `<div class="star-bar-bg"><div class="star-bar-fill" style="width:${pct}%"></div></div>`;
+                    };
+                    const stars = (val) => '★'.repeat(Math.floor(val)) + (val % 1 >= 0.5 ? '½' : '') + '☆'.repeat(5 - Math.ceil(val));
+                    womenPanel = `
+                        <div class="women-panel open mt-4">
+                            <p class="text-[10px] font-black text-pink-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <i class="fas fa-shield-alt"></i> Women Safety Ratings · ${wr.total_reviews} reviews
+                            </p>
+                            <div class="space-y-2.5">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-bold text-slate-500 w-28">🆘 SOS Button</span>
+                                    ${renderBar(wr.sos_rating)}
+                                    <span class="text-xs font-black text-pink-600 w-8">${wr.sos_rating}</span>
+                                    <span class="text-pink-400 text-xs">${stars(wr.sos_rating)}</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-bold text-slate-500 w-28">🧹 Hygiene</span>
+                                    ${renderBar(wr.hygiene_rating)}
+                                    <span class="text-xs font-black text-pink-600 w-8">${wr.hygiene_rating}</span>
+                                    <span class="text-pink-400 text-xs">${stars(wr.hygiene_rating)}</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-bold text-slate-500 w-28">👷 Staff</span>
+                                    ${renderBar(wr.staff_rating)}
+                                    <span class="text-xs font-black text-pink-600 w-8">${wr.staff_rating}</span>
+                                    <span class="text-pink-400 text-xs">${stars(wr.staff_rating)}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                }
+
+                return `
+                <div class="bg-white p-8 rounded-[2.5rem] border shadow-sm hover:shadow-xl transition">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <h3 class="text-2xl font-black tracking-tighter uppercase text-slate-800">${b.name}</h3>
+                                ${womenBadge}${specialBadge}
+                            </div>
+                            <div class="flex items-center gap-2 mb-4 flex-wrap">
+                                <p class="text-xs text-slate-400 font-bold uppercase">${b.type || 'Standard'}</p>
+                                ${delayBadge}
+                            </div>
+                            <div class="flex gap-8 items-center">
+                                <div class="text-center"><p class="font-black text-xl">${b.departure}</p><p class="text-[10px] text-slate-400 font-bold">DEPARTURE</p></div>
+                                <div class="flex-1 flex items-center gap-2"><div class="flex-1 h-[2px] bg-slate-100"></div><i class="fas fa-bus text-indigo-300 text-xs"></i><div class="flex-1 h-[2px] bg-slate-100"></div></div>
+                                <div class="text-center"><p class="font-black text-xl">${b.arrival}</p><p class="text-[10px] text-slate-400 font-bold">ARRIVAL</p></div>
+                            </div>
+                            ${delay ? `<p class="text-[10px] text-slate-400 font-bold mt-3 italic">${delay.reason}</p>` : ''}
+                            ${womenPanel}
+                        </div>
+                        <div class="text-right border-l pl-10 ml-10">
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Starts from</p>
+                            <p class="text-4xl font-black text-slate-900 tracking-tighter">₹${b.baseFare}</p>
+                            <p class="text-[10px] text-slate-400 font-bold mb-4">${b.availableSeats || 'Few'} seats left</p>
+                            <button onclick="startCheckout('${b.name}')" class="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 text-sm">View Seats →</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') || "<p class='p-10 font-bold text-slate-300 text-center'>No buses match your filters.</p>";
+        }
+
+        // ── Checkout ───────────────────────────────────────────────────────────
+        function startCheckout(busName) {
+            if (!currentUser) { showToast('Please login to book a ticket', 'error'); setTimeout(() => showPage('loginPage'), 800); return; }
+            selectedBus = allBuses.find(b => b.name === busName);
+            selectedSeats = []; selectedBoarding = null; selectedDropping = null; extraPassengers = [];
+            showPage('checkoutPage');
+            document.getElementById('smartPrefsForm').classList.add('hidden');
+            document.getElementById('smartModal').classList.add('open');
+        }
+
+        // ── Smart Seat Modal ───────────────────────────────────────────────────
+        function chooseManual() { document.getElementById('smartModal').classList.remove('open'); renderSeatStep(); }
+        function showSmartPrefs() { document.getElementById('smartPrefsForm').classList.remove('hidden'); }
+
+        async function fetchSmartSeats() {
+            const genderPref = document.getElementById('pref_gender').value;
+            const travelType = document.getElementById('pref_travel').value;
+            const seatPref   = document.getElementById('pref_seat').value;
+            setLoading('smartFetchBtn', true, 'Finding best seats...');
+            try {
+                const res = await fetch(`${API}/smart-seats`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ busName: selectedBus.name, genderPreference: genderPref, travelType, seatPreference: seatPref, bookedSeats: selectedBus.bookedSeats || [] })
+                });
+                const data = await res.json();
+                document.getElementById('smartModal').classList.remove('open');
+                renderSeatStep(data.recommended_seats || []);
+            } catch(e) { showToast('Smart seat fetch failed', 'error'); }
+            finally { setLoading('smartFetchBtn', false, '<i class="fas fa-magic mr-2"></i> Get My Best Seats'); }
+        }
+
+        // ── TASK 5: Back button helper ─────────────────────────────────────────
+        function backBtn(label, fn) {
+            return `<button class="back-btn mb-6" onclick="${fn}"><i class="fas fa-arrow-left text-xs"></i> ${label}</button>`;
+        }
+
+        // ── Seat Step ──────────────────────────────────────────────────────────
+        function renderSeatStep(smartRecs = []) {
+            updateSteps(1);
+            const bookedSeats = selectedBus.bookedSeats || [];
+            const smartIds = smartRecs.map(r => r.seat_number);
+            if (smartIds.length > 0) selectedSeats = [...smartIds];
+            const smartInfoHtml = smartRecs.length > 0 ? `
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-6">
+                    <p class="font-black text-emerald-700 text-sm mb-2"><i class="fas fa-magic mr-2"></i>Smart Recommendations</p>
+                    ${smartRecs.map(r => `
+                        <div class="flex justify-between items-center py-1.5 text-xs font-bold text-emerald-700 border-b border-emerald-100 last:border-0">
+                            <span class="bg-emerald-600 text-white px-2 py-0.5 rounded-lg">${r.seat_number}</span>
+                            <span class="text-emerald-600 flex-1 ml-3">${r.reason}</span>
+                            <span class="bg-emerald-100 px-2 py-0.5 rounded-lg">Score: ${r.match_score}</span>
+                        </div>`).join('')}
+                </div>` : '';
+            document.getElementById('checkoutContent').innerHTML = `
+                ${backBtn('Back to Results', "showPage('homePage')")}
+                <div class="bg-white p-12 rounded-[3rem] border shadow-sm">
+                    <div class="grid grid-cols-2 gap-10 items-start">
+                        <div>
+                            <h4 class="font-black text-lg mb-2">Select Your Seats</h4>
+                            <p class="text-sm text-slate-400 mb-4">Click on available seats to select.</p>
+                            ${smartInfoHtml}
+                            <div class="flex gap-4 mb-6 text-xs font-bold flex-wrap">
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-4 rounded border-2 border-slate-200 bg-white inline-block"></span> Available</span>
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-indigo-600 inline-block"></span> Selected</span>
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-emerald-500 inline-block"></span> AI Pick</span>
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-slate-100 inline-block"></span> Booked</span>
+                            </div>
+                            <div class="bg-slate-50 p-6 rounded-2xl">
+                                <div class="grid grid-cols-4 gap-3 max-w-[220px]">
+                                    ${Array.from({length: 40}).map((_, i) => {
+                                        const id = 'S' + (i + 1);
+                                        const booked    = bookedSeats.includes(id);
+                                        const isSmart   = smartIds.includes(id);
+                                        const isSelected= selectedSeats.includes(id);
+                                        let cls = 'seat';
+                                        if (booked) cls += ' booked';
+                                        else if (isSmart) cls += ' smart-pick';
+                                        else if (isSelected) cls += ' selected';
+                                        return `<div id="seat_${id}" onclick="${booked ? '' : `toggleSeat('${id}')`}" class="${cls}">${i + 1}</div>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sticky top-28">
+                            <div class="bg-slate-50 rounded-3xl p-8">
+                                <h4 class="font-black mb-4">Booking Summary</h4>
+                                <div class="text-sm space-y-3 border-b pb-4 mb-4">
+                                    <div class="flex justify-between"><span class="text-slate-500">Bus</span><span class="font-bold">${selectedBus.name}</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-500">Date</span><span class="font-bold">${document.getElementById('travelDate').value}</span></div>
+                                    <div class="flex justify-between"><span class="text-slate-500">Seats</span><span class="font-bold" id="seatSummary">${selectedSeats.length ? selectedSeats.join(', ') : 'None'}</span></div>
+                                </div>
+                                <div class="flex justify-between font-black text-lg"><span>Total</span><span id="totalSummary">₹${selectedBus.baseFare * Math.max(1, selectedSeats.length)}</span></div>
+                            </div>
+                            <button onclick="confirmSeats()" class="w-full bg-indigo-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl hover:bg-indigo-700 transition mt-4">Confirm Seats →</button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function toggleSeat(id) {
+            const el = document.getElementById('seat_' + id);
+            if (!el || el.classList.contains('booked')) return;
+            if (selectedSeats.includes(id)) { selectedSeats = selectedSeats.filter(s => s !== id); el.classList.remove('selected', 'smart-pick'); }
+            else { selectedSeats.push(id); el.classList.add('selected'); el.classList.remove('smart-pick'); }
+            const ss = document.getElementById('seatSummary'); const ts = document.getElementById('totalSummary');
+            if (ss) ss.textContent = selectedSeats.length ? selectedSeats.join(', ') : 'None';
+            if (ts) ts.textContent = `₹${selectedBus.baseFare * Math.max(1, selectedSeats.length)}`;
+        }
+
+        function confirmSeats() {
+            if (selectedSeats.length === 0) { showToast('Please select at least one seat', 'error'); return; }
+            renderBoardingStep();
+        }
+
+        function renderBoardingStep() {
+            updateSteps(2);
+            const mkPoint = (p, type) => `
+                <div class="boarding-option p-5 mb-3 flex justify-between items-center" onclick="selectPoint('${type}','${p.loc}','${p.time}',this)">
+                    <div class="flex items-center gap-4">
+                        <div class="point-radio"></div>
+                        <div><p class="font-black">${p.loc}</p><p class="text-xs text-slate-400 font-bold">${p.time}</p></div>
+                    </div>
+                    <span class="font-black text-indigo-600 text-sm">${p.time}</span>
+                </div>`;
+            document.getElementById('checkoutContent').innerHTML = `
+                ${backBtn('Back to Seat Selection', 'renderSeatStep()')}
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="bg-white p-10 rounded-[2.5rem] border shadow-sm">
+                        <h4 class="font-black mb-2 uppercase text-xs text-slate-400 tracking-widest">Boarding Point</h4>
+                        <p class="text-sm text-slate-400 mb-6">Where will you board the bus?</p>
+                        ${(selectedBus.points?.boarding || []).map(p => mkPoint(p, 'boarding')).join('') || '<p class="text-slate-300 italic text-sm">No boarding points listed</p>'}
+                    </div>
+                    <div class="bg-white p-10 rounded-[2.5rem] border shadow-sm">
+                        <h4 class="font-black mb-2 uppercase text-xs text-slate-400 tracking-widest">Dropping Point</h4>
+                        <p class="text-sm text-slate-400 mb-6">Where will you drop off?</p>
+                        ${(selectedBus.points?.dropping || []).map(p => mkPoint(p, 'dropping')).join('') || '<p class="text-slate-300 italic text-sm">No dropping points listed</p>'}
+                    </div>
+                </div>
+                <div class="text-center mt-10">
+                    <button onclick="confirmBoarding()" class="bg-indigo-600 text-white px-16 py-5 rounded-3xl font-black shadow-2xl hover:bg-indigo-700 transition">Passenger Details →</button>
+                </div>`;
+        }
+
+        function selectPoint(type, loc, time, el) {
+            el.closest('.bg-white').querySelectorAll('.boarding-option').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+            if (type === 'boarding') selectedBoarding = { loc, time };
+            else selectedDropping = { loc, time };
+        }
+
+        function confirmBoarding() {
+            if (!selectedBoarding) { showToast('Please select a boarding point', 'error'); return; }
+            if (!selectedDropping) { showToast('Please select a dropping point', 'error'); return; }
+            renderPassengerStep();
+        }
+
+        // ── TASK 3: Passenger Details + Summary + Pay ─────────────────────────
+        function renderPassengerStep() {
+            updateSteps(3);
+            const total = selectedBus.baseFare * selectedSeats.length;
+            document.getElementById('checkoutContent').innerHTML = `
+                ${backBtn('Back to Boarding Points', 'renderBoardingStep()')}
+                <div class="max-w-2xl mx-auto space-y-6">
+                    <!-- Summary -->
+                    <div class="bg-white p-10 rounded-[2.5rem] border shadow-sm">
+                        <h4 class="font-black mb-6 text-lg">Booking Summary</h4>
+                        <div class="space-y-4 text-sm border-b pb-6 mb-6">
+                            <div class="flex justify-between"><span class="text-slate-500">Bus</span><span class="font-black">${selectedBus.name}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Type</span><span class="font-black">${selectedBus.type || 'Standard'}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Date</span><span class="font-black">${document.getElementById('travelDate').value}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Seats</span><span class="font-black">${selectedSeats.join(', ')}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Boarding</span><span class="font-black">${selectedBoarding?.loc} (${selectedBoarding?.time})</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Dropping</span><span class="font-black">${selectedDropping?.loc} (${selectedDropping?.time})</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Primary Passenger</span><span class="font-black">${currentUser.name}</span></div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-black text-lg">Total Amount</span>
+                            <span class="font-black text-3xl tracking-tighter text-indigo-600">₹${total}</span>
+                        </div>
+                    </div>
+
+                    <!-- Add Passengers -->
+                    <div class="bg-white p-10 rounded-[2.5rem] border shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="font-black text-lg flex items-center gap-2"><i class="fas fa-users text-indigo-500"></i> Add Passengers</h4>
+                            <button onclick="addPassengerRow()" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-black text-sm hover:bg-indigo-100 transition">
+                                <i class="fas fa-plus mr-1"></i> Add
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 font-bold mb-4">Add details for co-passengers travelling with you (optional)</p>
+                        <div id="passengerRows" class="space-y-4"></div>
+                    </div>
+
+                    <!-- Payment -->
+                    <div class="bg-white p-10 rounded-[2.5rem] border shadow-sm">
+                        <h4 class="font-black mb-6 text-lg flex items-center gap-2"><i class="fas fa-lock text-indigo-500"></i> Choose Payment Method</h4>
+                        <div class="flex gap-3 mb-8 flex-wrap">
+                            <div class="pay-tab active" onclick="switchPayTab('upi', this)"><i class="fas fa-mobile-alt text-indigo-500"></i> UPI</div>
+                            <div class="pay-tab" onclick="switchPayTab('card', this)"><i class="fas fa-credit-card text-indigo-500"></i> Card</div>
+                            <div class="pay-tab" onclick="switchPayTab('netbanking', this)"><i class="fas fa-university text-indigo-500"></i> Net Banking</div>
+                        </div>
+                        <div id="pay_upi" class="pay-section active space-y-4">
+                            <p class="text-sm text-slate-400 font-bold mb-4">Enter your UPI ID or scan QR to pay</p>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">UPI ID</label>
+                                <input id="upi_id" type="text" placeholder="yourname@upi" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                            </div>
+                            <div class="bg-indigo-50 rounded-2xl p-6 flex items-center gap-6">
+                                <div class="bg-white p-3 rounded-xl border-2 border-indigo-100">
+                                    <div class="grid grid-cols-5 gap-0.5">
+                                        ${Array.from({length: 25}).map(() => `<div class="w-3 h-3 rounded-sm ${Math.random()>0.5?'bg-indigo-700':'bg-white border border-indigo-100'}"></div>`).join('')}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="font-black text-indigo-700 text-sm">Scan QR Code</p>
+                                    <p class="text-xs text-indigo-400 font-bold mt-1">Use any UPI app to scan</p>
+                                    <p class="text-xs text-slate-400 font-bold mt-3">Supported: GPay, PhonePe, Paytm, BHIM</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="pay_card" class="pay-section space-y-4">
+                            <p class="text-sm text-slate-400 font-bold mb-4">Enter your debit or credit card details</p>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Card Number</label>
+                                <input id="card_num" type="text" placeholder="1234 5678 9012 3456" maxlength="19" oninput="formatCard(this)" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition tracking-widest">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Expiry Date</label>
+                                    <input id="card_exp" type="text" placeholder="MM/YY" maxlength="5" oninput="formatExpiry(this)" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">CVV</label>
+                                    <input id="card_cvv" type="password" placeholder="•••" maxlength="3" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name on Card</label>
+                                <input id="card_name" type="text" placeholder="John Doe" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                            </div>
+                            <div class="flex gap-3 mt-2">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/800px-Mastercard-logo.svg.png" class="h-7 opacity-60">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/800px-Visa_Inc._logo.svg.png" class="h-7 opacity-60">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/American_Express_logo_%282018%29.svg/800px-American_Express_logo_%282018%29.svg.png" class="h-7 opacity-60">
+                            </div>
+                        </div>
+                        <div id="pay_netbanking" class="pay-section space-y-4">
+                            <p class="text-sm text-slate-400 font-bold mb-4">Select your bank to proceed</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                ${['SBI', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Bank', 'Punjab National Bank'].map(bank => `
+                                    <div onclick="selectBank(this)" class="bank-option border-2 border-slate-200 rounded-2xl p-4 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition font-bold text-sm flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-black text-xs">${bank[0]}</div>${bank}
+                                    </div>`).join('')}
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Or enter other bank name</label>
+                                <input id="bank_name" type="text" placeholder="Bank name" class="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none font-bold mt-1 focus:border-indigo-400 transition">
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-300 font-bold text-center mt-6 uppercase tracking-widest flex items-center justify-center gap-2">
+                            <i class="fas fa-shield-alt text-emerald-400"></i> 256-bit SSL Encrypted · 100% Secure Payment
+                        </p>
+                    </div>
+                    <button onclick="finalizeBooking()" id="payBtn" class="w-full bg-emerald-600 text-white py-5 rounded-[2rem] font-black shadow-xl hover:bg-emerald-700 transition text-lg">
+                        <i class="fas fa-lock mr-2"></i> Pay ₹${total} Securely
+                    </button>
+                </div>`;
+        }
+
+        // Add/remove passenger rows dynamically
+        function addPassengerRow() {
+            const idx = extraPassengers.length;
+            extraPassengers.push({ name: '', age: '', phone: '' });
+            const container = document.getElementById('passengerRows');
+            const row = document.createElement('div');
+            row.id = `prow_${idx}`;
+            row.className = 'bg-slate-50 p-5 rounded-2xl border border-slate-200 relative';
+            row.innerHTML = `
+                <button onclick="removePassengerRow(${idx})" class="absolute top-3 right-3 text-rose-400 hover:text-rose-600 font-black text-sm"><i class="fas fa-times"></i></button>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Passenger ${idx + 2}</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
+                        <input type="text" placeholder="Name" oninput="updatePassenger(${idx},'name',this.value)"
+                            class="w-full p-3 rounded-xl bg-white border border-slate-200 outline-none font-bold mt-1 text-sm focus:border-indigo-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Age</label>
+                        <input type="number" placeholder="Age" min="1" max="120" oninput="updatePassenger(${idx},'age',this.value)"
+                            class="w-full p-3 rounded-xl bg-white border border-slate-200 outline-none font-bold mt-1 text-sm focus:border-indigo-400 transition">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone</label>
+                        <input type="tel" placeholder="Phone" oninput="updatePassenger(${idx},'phone',this.value)"
+                            class="w-full p-3 rounded-xl bg-white border border-slate-200 outline-none font-bold mt-1 text-sm focus:border-indigo-400 transition">
+                    </div>
+                </div>`;
+            container.appendChild(row);
+        }
+
+        function removePassengerRow(idx) {
+            extraPassengers[idx] = null;
+            const row = document.getElementById(`prow_${idx}`);
+            if (row) row.remove();
+        }
+
+        function updatePassenger(idx, field, val) {
+            if (extraPassengers[idx]) extraPassengers[idx][field] = val;
+        }
+
+        // ── Payment helpers ────────────────────────────────────────────────────
+        function switchPayTab(tab, el) {
+            document.querySelectorAll('.pay-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.pay-section').forEach(s => s.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('pay_' + tab).classList.add('active');
+        }
+
+        function selectBank(el) {
+            document.querySelectorAll('.bank-option').forEach(b => { b.classList.remove('border-indigo-500', 'bg-indigo-50'); b.classList.add('border-slate-200'); });
+            el.classList.add('border-indigo-500', 'bg-indigo-50');
+            const bankInput = document.getElementById('bank_name');
+            if (bankInput) bankInput.value = el.textContent.trim();
+        }
+
+        function formatCard(input) {
+            let v = input.value.replace(/\D/g, '').substring(0, 16);
+            input.value = v.replace(/(.{4})/g, '$1 ').trim();
+        }
+
+        function formatExpiry(input) {
+            let v = input.value.replace(/\D/g, '').substring(0, 4);
+            if (v.length >= 2) v = v.substring(0, 2) + '/' + v.substring(2);
+            input.value = v;
+        }
+
+        function updateSteps(step) {
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById('s' + i).className = i <= step
+                    ? 'step-item active font-black uppercase text-xs tracking-widest cursor-pointer'
+                    : 'step-item font-black uppercase text-xs tracking-widest text-slate-400';
+            }
+        }
+
+        // ── Finalize ───────────────────────────────────────────────────────────
+        async function finalizeBooking() {
+            setLoading('payBtn', true, 'Processing payment...');
+            const validPassengers = extraPassengers.filter(p => p && p.name.trim());
+            try {
+                const res = await fetch(`${API}/finalize-booking`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id, busName: selectedBus.name, seats: selectedSeats,
+                        totalAmount: selectedBus.baseFare * selectedSeats.length,
+                        boarding: selectedBoarding?.loc || '', dropping: selectedDropping?.loc || '',
+                        travelDate: document.getElementById('travelDate').value,
+                        passengers: validPassengers
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    lastBooking = {
+                        tripId: data.tripId, busName: selectedBus.name, busType: selectedBus.type,
+                        from: selectedBus.source, to: selectedBus.destination,
+                        date: document.getElementById('travelDate').value, departure: selectedBus.departure,
+                        seats: selectedSeats.join(', '),
+                        boarding: selectedBoarding?.loc + ' (' + selectedBoarding?.time + ')',
+                        dropping: selectedDropping?.loc + ' (' + selectedDropping?.time + ')',
+                        passenger: currentUser.name, total: '₹' + (selectedBus.baseFare * selectedSeats.length),
+                        extraPassengers: validPassengers
+                    };
+                    currentUser.history = currentUser.history || [];
+                    currentUser.history.push({ busName: selectedBus.name, boarding: selectedBoarding?.loc, dropping: selectedDropping?.loc, date: document.getElementById('travelDate').value, status: 'Upcoming' });
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    showToast('Booking confirmed! 🎉');
+                    setTimeout(() => openTicket(lastBooking), 800);
+                } else { showToast(data.message || 'Booking failed', 'error'); setLoading('payBtn', false); }
+            } catch (e) { showToast('Payment failed. Please try again.', 'error'); setLoading('payBtn', false); }
+        }
+
+        // ── Ticket ─────────────────────────────────────────────────────────────
+        function openTicket(b) {
+            document.getElementById('tkt_tripId').textContent    = b.tripId || 'SWFT' + Math.random().toString(36).substring(2,8).toUpperCase();
+            document.getElementById('tkt_from').textContent       = b.from;
+            document.getElementById('tkt_to').textContent         = b.to;
+            document.getElementById('tkt_busType').textContent    = b.busType;
+            document.getElementById('tkt_busName').textContent    = b.busName;
+            document.getElementById('tkt_date').textContent       = b.date;
+            document.getElementById('tkt_departure').textContent  = b.departure;
+            document.getElementById('tkt_seats').textContent      = b.seats;
+            document.getElementById('tkt_boarding').textContent   = b.boarding;
+            document.getElementById('tkt_dropping').textContent   = b.dropping;
+            document.getElementById('tkt_passenger').textContent  = b.passenger;
+            document.getElementById('tkt_total').textContent      = b.total;
+            // Extra passengers on ticket
+            const ep = b.extraPassengers || [];
+            document.getElementById('tkt_extra_passengers').innerHTML = ep.length > 0
+                ? ep.map((p, i) => `<div class="ticket-row"><span class="ticket-label">Passenger ${i+2}</span><span class="ticket-value">${p.name}${p.age ? ', Age '+p.age : ''}${p.phone ? ', '+p.phone : ''}</span></div>`).join('')
+                : '';
+            document.getElementById('ticketModal').classList.add('open');
+        }
+
+        function closeTicket() {
+            document.getElementById('ticketModal').classList.remove('open');
+            showPage('profilePage'); switchTab('trips');
+        }
+
+        // ── Profile ────────────────────────────────────────────────────────────
+        function renderProfile() {
+            if (!currentUser) return;
+            document.getElementById('pName').textContent  = currentUser.name   || '--';
+            document.getElementById('pEmail').textContent = currentUser.email  || '--';
+            document.getElementById('pPhone').textContent = currentUser.phone  || '--';
+            document.getElementById('pDob').textContent   = currentUser.dob    || '--';
+            document.getElementById('userInitial').textContent  = currentUser.name[0].toUpperCase();
+            document.getElementById('sideUserName').textContent = currentUser.name;
+            cancelEditProfile();
+            const history = (currentUser.history || []).slice().reverse();
+            document.getElementById('historyList').innerHTML = history.map(t => `
+                <div class="bg-white p-8 rounded-[2rem] border shadow-sm flex justify-between items-center relative overflow-hidden">
+                    <div class="absolute left-0 top-0 bottom-0 w-2 bg-indigo-600 rounded-l-[2rem]"></div>
+                    <div class="pl-4">
+                        <h4 class="text-xl font-black tracking-tighter">${t.busName}</h4>
+                        <p class="font-bold text-slate-500 text-sm mt-1">${t.boarding || '—'} → ${t.dropping || '—'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-lg font-black text-indigo-600">${t.date || '--'}</p>
+                        <span class="bg-indigo-50 text-indigo-600 px-4 py-1 rounded-full text-[10px] font-black uppercase">${t.status || 'Upcoming'}</span>
+                    </div>
+                </div>`).join('') || "<p class='text-center py-20 italic font-bold text-slate-300'>No journeys yet. Book your first trip!</p>";
+        }
+
+        function switchTab(tab) {
+            ['profile', 'trips'].forEach(t => document.getElementById(t + 'Tab').classList.toggle('hidden', t !== tab));
+            document.querySelectorAll('.sidebar-item').forEach((el, i) => {
+                el.classList.toggle('active', (tab === 'profile' && i === 0) || (tab === 'trips' && i === 1));
+            });
+        }
+    </script>
+</body>
+</html>
